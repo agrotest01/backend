@@ -1,0 +1,35 @@
+version: '3.9'
+services:
+  db:
+    image: mariadb:10.3
+    restart: always
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - databaseVolume:/var/lib/mysql
+    expose:
+      - 3306
+  backend:
+    build: ./docker/php
+    restart: unless-stopped
+    volumes:
+      - .:/var/www/backend
+  nginx:
+    image: nginx:latest
+    ports:
+      - 80:80
+    depends_on:
+      - backend
+      - db
+    restart: unless-stopped
+    volumes:
+      - .:/var/www/backend
+      - ./docker/nginx/backend.conf.template:/etc/nginx/conf.d/backend.conf.template
+    environment:
+      - BACKEND_DOMAIN=${BACKEND_DOMAIN}
+    command: >
+      bin/bash -c "export BACKEND_DOMAIN && envsubst '$$BACKEND_DOMAIN' < /etc/nginx/conf.d/backend.conf.template > /etc/nginx/conf.d/backend.conf
+      && nginx -g 'daemon off;'"
+
+volumes:
+  databaseVolume: {}
